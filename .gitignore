@@ -1,0 +1,7 @@
+venv/
+tmp/
+__pycache__/
+config.json
+*.crt.pem
+*.log
+change_key.py
