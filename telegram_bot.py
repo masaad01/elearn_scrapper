@@ -7,7 +7,7 @@ from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
                           MessageHandler, filters)
 
 from users import User
-from scrapper import ElearnScrapper
+from scrapper import ElearnScrapper, LoginError
 
 
 if __name__ == "__main__":
@@ -108,6 +108,12 @@ class TelegramBot:
             await TelegramBot.botapi.send_message(chat_id=chat_id, text=text)
 
     @staticmethod
+    async def send_photo(chat_id, photo_path):
+        with open(photo_path, "rb") as f:
+            async with TelegramBot.botapi:
+                await TelegramBot.botapi.send_photo(chat_id=chat_id, photo=f)
+            
+    @staticmethod
     async def send_message_to_admin(text):
         await TelegramBot.send_message(TelegramBot.admin_chat_id, text)
 
@@ -123,11 +129,34 @@ class TelegramBot:
 
 
 async def main():
-    # scrapper = ElearnScrapper()
     while True:
-        print("test")
-        await asyncio.sleep(1)
+        active_users = User.get_users_by("active", True)
+        for user in active_users:
+            scrapper = ElearnScrapper(user)
+            try:
+                print(f"Checking for new content for {user.get_chat_id()}")
+                changed_courses = scrapper.get_all_courses_data()
+            except LoginError:
+                await TelegramBot.send_message(user.get_chat_id(), "Login failed. Please check your credentials.")
+                continue
+            except Exception as e:
+                await TelegramBot.send_message_to_admin(f"Error: {e}")
+                continue
+            print(f"Found {len(changed_courses)} changed courses for {user.get_chat_id()}")
+            for course in changed_courses:
+                if len(course["course_sections"]) == 0:
+                    continue
+                await TelegramBot.send_message(user.get_chat_id(), f"New content in {course['course_name']}:")
+                for section in course["course_sections"]:
+                    for activity in section["activities"]:
+                        await TelegramBot.send_message(user.get_chat_id(), f"New activity in {section['section_name']}")
+                        try:
+                            await TelegramBot.send_photo(user.get_chat_id(), activity["screen_shot_path"])
+                        except FileNotFoundError as e:
+                            await TelegramBot.send_message_to_admin(f"FileNotFoundError: {e}")
 
+            del scrapper
+        await asyncio.sleep(60*30)
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.create_task(main())

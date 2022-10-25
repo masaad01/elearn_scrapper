@@ -39,8 +39,8 @@ class LoginError(Exception):
 
 
 class ElearnScrapper:
-    valid_types = ["course", "section", "messages", None]
-
+    valid_types = ["course", "section", "messages", "activity", None]
+    geckodriver_path = geckodriver_path()
     def __init__(self, user: User):
         self.set_user(user)
         self.browser = None
@@ -55,18 +55,23 @@ class ElearnScrapper:
         self._user = user
 
     def _open_browser(self, headless=True):
-        service = FirfoxService(executable_path=geckodriver_path())
+        service = FirfoxService(executable_path=self.geckodriver_path)
         options = webdriver.FirefoxOptions()
-        # options.headless = headless
+        options.headless = headless
+
 
         browser = webdriver.Firefox(service=service, options=options)
         browser.implicitly_wait(2)
+        browser.set_window_position(0, 0)
+        browser.set_window_size(412, 915)
+
 
         self.browser = browser
 
     def _close_browser(self):
-        self.browser.close()
-        self.browser = None
+        if self.browser is not None:
+            self.browser.close()
+            self.browser = None
 
     def _login(self):
         if self.browser is None:
@@ -159,6 +164,16 @@ class ElearnScrapper:
                 continue
 
             for elem in activities_elements:
+                try:
+                    elem.find_element(By.XPATH, r".//button[contains(@title,'is marked as done')]")
+                except Exception as e:
+                    pass
+                else:
+                    continue
+
+                if not self._is_activity_changed(course_url, section_data["section_name"], elem.text):
+                    continue
+
                 activity_data = {}
                 activity_data["text"] = elem.text
                 activity_data["links"] = []
@@ -166,8 +181,8 @@ class ElearnScrapper:
                 for link in links:
                     activity_data["links"].append(link.get_attribute("href"))
 
-                activity_data["screenshot"] = f"{myhash(activity_data['text'] + section.text + content.text)}.png"
-                elem.screenshot(f"./tmp/{activity_data['screenshot']}")
+                activity_data["screen_shot_path"] = f"./tmp/{myhash(activity_data['text'] + section.text + content.text)}.png"
+                elem.screenshot(activity_data['screen_shot_path'])
                 section_data["activities"].append(activity_data)
 
             course_data["course_sections"].append(section_data)
@@ -177,10 +192,12 @@ class ElearnScrapper:
     def get_all_courses_data(self):
         courses_urls = self._get_courses_urls()
         courses_data = []
-        for url in courses_urls:
+        number_of_courses = len(courses_urls)
+        for i, url in enumerate(courses_urls):
             course_data = self.get_course_data(url)
             if course_data is not None:
                 courses_data.append(course_data)
+            print(f"Course {i+1}/{number_of_courses} done.")
         self._close_browser()
         return courses_data
 
@@ -195,6 +212,13 @@ class ElearnScrapper:
         section_hash = myhash(section_text)
         item_id = myhash(course_url + section_name)
         if self.set_hash(item_id, section_hash, "section"):
+            return True
+        return False
+
+    def _is_activity_changed(self, course_url, section_name, activity_text):
+        activity_hash = myhash(activity_text)
+        item_id = myhash(course_url + section_name + activity_text)
+        if self.set_hash(item_id, activity_hash, "activity"):
             return True
         return False
 
@@ -232,3 +256,10 @@ class ElearnScrapper:
 
     def __del__(self):
         self._close_browser()
+
+
+if __name__ == "__main__":
+    user = User.get_all_users()[0]
+    scrapper = ElearnScrapper(user)
+    courses_data = scrapper.get_all_courses_data()
+    print(courses_data)
