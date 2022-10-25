@@ -147,10 +147,10 @@ async def notify_users():
             for course in changed_courses:
                 if len(course["course_sections"]) == 0:
                     continue
-                await TelegramBot.send_message(user.get_chat_id(), f"New content in Section ({course['course_name']})")
+                await TelegramBot.send_message(user.get_chat_id(), f"New content in {course['course_name']}")
                 for section in course["course_sections"]:
                     for activity in section["activities"]:
-                        await TelegramBot.send_message(user.get_chat_id(), f"New activity in {section['section_name']}")
+                        await TelegramBot.send_message(user.get_chat_id(), f"New activity in ({section['section_name']})")
                         try:
                             await TelegramBot.send_photo(user.get_chat_id(), activity["screen_shot_path"])
                         except FileNotFoundError as e:
@@ -165,7 +165,7 @@ def run():
     asyncio.run(notify_users())
 
 if __name__ == "__main__":
-    mythread = threading.Thread(target=run)
+    mythread = threading.Thread(target=run, daemon=True)
     mythread.start()
 
     bot = TelegramBot()

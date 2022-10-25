@@ -1,0 +1,16 @@
+{
+    "database_connection": {
+        "host": "",
+        "user": "",
+        "password": "",
+        "database": "",
+        "port": ""
+    },
+    "telegram_bot": {
+        "token": "",
+        "admin": {
+            "id": 0
+        }
+    },
+    "encryption_key": ""
+}
