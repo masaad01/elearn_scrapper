@@ -45,6 +45,7 @@ class ElearnScrapper:
         self.set_user(user)
         self.browser = None
         self.is_logged_in = False
+        self._courses_urls = None
 
     def set_user(self, user: User):
         if type(user) is not User:
@@ -103,7 +104,9 @@ class ElearnScrapper:
         else:
             self.is_logged_in = True
 
-    def _get_courses_urls(self):
+    def _get_courses_urls(self, force=False):
+        if self._courses_urls is not None and not force:
+            return self._courses_urls
         if not self.is_logged_in:
             self._login()
         elif self.browser.current_url != _elearn_URL:
@@ -127,7 +130,9 @@ class ElearnScrapper:
         try:
             urls = self._get_courses_urls()
             if course_url not in urls:
-                raise Exception("Invalid course URL.")
+                urls = self._get_courses_urls(force=True)
+                if course_url not in urls:
+                    raise Exception("Invalid course URL.")
             self.browser.get(course_url)
         except Exception as e:
             print(e)

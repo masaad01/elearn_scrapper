@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import threading
 from telegram import Update
 from telegram import Bot as BotAPI
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
@@ -157,9 +158,15 @@ async def main():
 
             del scrapper
         await asyncio.sleep(60*30)
+
+def run():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    asyncio.run(main())
+
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(main())
+    mythread = threading.Thread(target=run)
+    mythread.start()
 
     bot = TelegramBot()
     bot.run()
