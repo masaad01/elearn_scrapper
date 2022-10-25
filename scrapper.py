@@ -64,7 +64,7 @@ class ElearnScrapper:
         browser = webdriver.Firefox(service=service, options=options)
         browser.implicitly_wait(2)
         browser.set_window_position(0, 0)
-        browser.set_window_size(412, 915)
+        browser.set_window_size(360, 740)
 
 
         self.browser = browser

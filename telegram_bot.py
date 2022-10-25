@@ -129,7 +129,7 @@ class TelegramBot:
         return res
 
 
-async def main():
+async def notify_users():
     while True:
         active_users = User.get_users_by("active", True)
         for user in active_users:
@@ -147,7 +147,7 @@ async def main():
             for course in changed_courses:
                 if len(course["course_sections"]) == 0:
                     continue
-                await TelegramBot.send_message(user.get_chat_id(), f"New content in {course['course_name']}:")
+                await TelegramBot.send_message(user.get_chat_id(), f"New content in Section ({course['course_name']})")
                 for section in course["course_sections"]:
                     for activity in section["activities"]:
                         await TelegramBot.send_message(user.get_chat_id(), f"New activity in {section['section_name']}")
@@ -162,7 +162,7 @@ async def main():
 def run():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    asyncio.run(main())
+    asyncio.run(notify_users())
 
 if __name__ == "__main__":
     mythread = threading.Thread(target=run)
