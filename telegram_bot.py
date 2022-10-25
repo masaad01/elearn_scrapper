@@ -40,8 +40,12 @@ class TelegramBot:
             "toggle_notifications", self._toggle_active))
 
     async def _start(self, update: Update, context: ContextTypes):
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Welcome to Elearning Bot.\n")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Welcome to Elearning Bot.\nCommands:\n/start - Start the bot.\n/email - Get or Set your email address.\n/password - Get or Set your password.\n/toggle_notifications - Toggle notifications on or off.\n/help - Show this message.")
         user = TelegramBot.get_user(update.effective_chat.id)
+        if user.get_email() is None:
+            await context.bot.send_message(chat_id=user.get_chat_id(), text="Please set your email address using the /email command.")
+        if user.get_password() is None:
+            await context.bot.send_message(chat_id=user.get_chat_id(), text="Please set your password using the /password command.")
 
     async def _email(self, update: Update, context: ContextTypes):
         user = TelegramBot.get_user(update.effective_chat.id)
