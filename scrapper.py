@@ -1,17 +1,18 @@
-import json
 import os
 import platform
 import shutil
-from random import randrange
 from time import sleep
 
-from bs4 import BeautifulSoup
-from pydoc_data.topics import topics
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.service import Service as FirfoxService
 from webdriver_manager.firefox import GeckoDriverManager
+
+import sqlalchemy as db
+from database_connection import DatabaseConnection
+from users import User
+import hashlib
+
 
 _elearn_URL = r"https://learn.ejust.org/first23/my/"
 
@@ -28,20 +29,35 @@ def geckodriver_path():
         return GeckoDriverManager().install()
 
 
-class Scrapper:
-    def __init__(self, email="", passwd=""):
-        self.email = email
-        self.password = passwd
+def myhash(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+class LoginError(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
+class ElearnScrapper:
+    valid_types = ["course", "section", "messages", None]
+
+    def __init__(self, user: User):
+        self.set_user(user)
         self.browser = None
         self.is_logged_in = False
-        # {course_url: {course_hash, "course_sections": {"section_name": section_hash,...}}}
-        with open("./course_hashes.json", "r") as f:
-            self.course_hashes = json.load(f)
+
+    def set_user(self, user: User):
+        if type(user) is not User:
+            raise TypeError("user must be of type User")
+        valid_users = User.get_all_users()
+        if user not in valid_users:
+            raise ValueError("user not found")
+        self._user = user
 
     def _open_browser(self, headless=True):
         service = FirfoxService(executable_path=geckodriver_path())
         options = webdriver.FirefoxOptions()
-        options.headless = headless
+        # options.headless = headless
 
         browser = webdriver.Firefox(service=service, options=options)
         browser.implicitly_wait(2)
@@ -62,12 +78,12 @@ class Scrapper:
                 By.XPATH, r"//a[normalize-space()='Microsoft']").click()
             sleep(1)
             self.browser.find_element(
-                By.XPATH, r"//input[contains(@placeholder,'Email or phone')]").send_keys(self.email)
+                By.XPATH, r"//input[contains(@placeholder,'Email or phone')]").send_keys(self._user.get_email())
             self.browser.find_element(
                 By.XPATH, r"//input[@value='Next']").click()
             sleep(1)
             self.browser.find_element(
-                By.XPATH, r"//input[contains(@placeholder,'Password')]").send_keys(self.password)
+                By.XPATH, r"//input[contains(@placeholder,'Password')]").send_keys(self._user.get_password())
             self.browser.find_element(
                 By.XPATH, r"//input[@value='Sign in']").click()
             sleep(1)
@@ -76,14 +92,17 @@ class Scrapper:
             sleep(3)
         except Exception as e:
             print(e)
+            self._close_browser()
             self.is_logged_in = False
+            raise LoginError("Login failed")
         else:
             self.is_logged_in = True
 
     def _get_courses_urls(self):
         if not self.is_logged_in:
             self._login()
-
+        elif self.browser.current_url != _elearn_URL:
+            self.browser.get(_elearn_URL)
         courses_cards = self.browser.find_elements(
             By.XPATH, r"//div[contains(@data-region,'paged-content-page')]//a")
 
@@ -93,9 +112,7 @@ class Scrapper:
             if url.find("course/view.php") != -1 and url not in courses_urls:
                 courses_urls.append(url)
 
-        for url in courses_urls:
-            self.course_hashes[url] = {
-                "course_sections": {}, "course_hash": None}
+        self._courses_urls = courses_urls
         return courses_urls
 
     def get_course_data(self, course_url):
@@ -103,9 +120,8 @@ class Scrapper:
             self._login()
 
         try:
-            if course_url not in self.course_hashes:
-                self._get_courses_urls()
-            if course_url not in self.course_hashes:
+            urls = self._get_courses_urls()
+            if course_url not in urls:
                 raise Exception("Invalid course URL.")
             self.browser.get(course_url)
         except Exception as e:
@@ -138,6 +154,10 @@ class Scrapper:
             section_data["activities"] = []
             activities_elements = section.find_elements(
                 By.XPATH, r".//li[contains(@class,'activity')]")
+
+            if len(activities_elements) == 0:
+                continue
+
             for elem in activities_elements:
                 activity_data = {}
                 activity_data["text"] = elem.text
@@ -146,7 +166,7 @@ class Scrapper:
                 for link in links:
                     activity_data["links"].append(link.get_attribute("href"))
 
-                activity_data["screenshot"] = f"{abs(hash(activity_data['text'] + section.text + content.text))}.png"
+                activity_data["screenshot"] = f"{myhash(activity_data['text'] + section.text + content.text)}.png"
                 elem.screenshot(f"./tmp/{activity_data['screenshot']}")
                 section_data["activities"].append(activity_data)
 
@@ -155,34 +175,60 @@ class Scrapper:
         return course_data
 
     def get_all_courses_data(self):
-        courses_urls = self.course_hashes.keys()
+        courses_urls = self._get_courses_urls()
         courses_data = []
         for url in courses_urls:
-            courses_data.append(self.get_course_data(url))
-
+            course_data = self.get_course_data(url)
+            if course_data is not None:
+                courses_data.append(course_data)
+        self._close_browser()
         return courses_data
 
     def _is_course_changed(self, course_url, course_text):
-        if course_url not in self.course_hashes:
-            return False
-        if self.course_hashes[course_url]["course_hash"] != hash(course_text):
-            self.course_hashes[course_url]["course_hash"] = hash(course_text)
-            with open("./course_hashes.json", "w") as f:
-                json.dump(self.course_hashes, f)
+        course_hash = myhash(course_text)
+        item_id = myhash(course_url)
+        if self.set_hash(item_id, course_hash, "course"):
             return True
         return False
 
     def _is_section_changed(self, course_url, section_name, section_text):
-        if section_name not in self.course_hashes[course_url]["course_sections"]:
-            self.course_hashes[course_url]["course_sections"][section_name] = hash(
-                section_text)
-            with open("./course_hashes.json", "w") as f:
-                json.dump(self.course_hashes, f)
-            return True
-        if self.course_hashes[course_url]["course_sections"][section_name] != hash(section_text):
-            self.course_hashes[course_url]["course_sections"][section_name] = hash(
-                section_text)
-            with open("./course_hashes.json", "w") as f:
-                json.dump(self.course_hashes, f)
+        section_hash = myhash(section_text)
+        item_id = myhash(course_url + section_name)
+        if self.set_hash(item_id, section_hash, "section"):
             return True
         return False
+
+    def get_hash(self, item_id):
+        with DatabaseConnection() as connection:
+
+            table = connection.get_table("last_updated")
+            query = db.select([table]).where(
+                table.columns.id == item_id, table.columns.user_id == self._user.get_user_id())
+            result_proxy = connection.execute(query)
+            if result_proxy is None:
+                return None
+            row = result_proxy.fetchone()
+            if row is None:
+                return None
+            return row["hash"]
+
+    def set_hash(self, item_id, hash, type=None):
+        if type not in self.valid_types:
+            type = None
+        with DatabaseConnection() as connection:
+            old_hash = self.get_hash(item_id)
+            if old_hash == hash:
+                return False
+            table = connection.get_table("last_updated")
+            if old_hash is None:
+                query = db.insert(table).values(
+                    id=item_id, user_id=self._user.get_user_id(), hash=hash, type=type)
+                connection.execute(query)
+            else:
+                query = db.update(table).where(table.columns.id == item_id,
+                                               table.columns.user_id == self._user.get_user_id()).values(hash=hash)
+                connection.execute(query)
+            return True
+
+    def __del__(self):
+        self._close_browser()

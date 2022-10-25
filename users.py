@@ -43,7 +43,7 @@ class User:
         self.set_password(kwargs.get("password", None))
         self.set_is_active(kwargs.get("active", False))
         self.set_chat_id(kwargs.get("chat_id", None))
-        
+
     def __repr__(self):
         return f"User({self._user_id}, {self._email}, {self._is_active}, {self._chat_id})"
 
@@ -52,6 +52,17 @@ class User:
 
     def __enter__(self):
         return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def __eq__(self, __o: object) -> bool:
+        if type(__o) is not User:
+            return False
+        return self._user_id == __o._user_id and self._email == __o._email and self._password == __o._password
+
+    def __ne__(self, __o: object) -> bool:
+        return not self.__eq__(__o)
 
     def save_to_db(self):
         old_user = User.get_user(self._user_id)
@@ -79,7 +90,8 @@ class User:
         if re.match(email_pat, email):
             self._email = email
         else:
-            raise ValueError("Please enter a valid email address. \nEmail must be from (just.edu.jo)")
+            raise ValueError(
+                "Please enter a valid email address. \nEmail must be from (just.edu.jo)")
 
     def get_email(self):
         return self._email
@@ -127,7 +139,7 @@ class User:
         if type(chat_id) is not int:
             raise TypeError("Chat ID must be an integer.")
         self._chat_id = chat_id
-    
+
     def get_chat_id(self):
         return self._chat_id
 
@@ -208,8 +220,3 @@ class User:
 
 if __name__ == "__main__":
     main()
-    # for i in range(10):
-    #     user = User(email=f"email{randrange(0,20)}@abc.com", password=f"dsf5131dfg", is_active=True, chat_id=randrange(1000000000, 9999999999))
-    #     if User.insert_user(user):
-    #         print("User inserted.", i)
-    
