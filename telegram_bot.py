@@ -137,6 +137,7 @@ class TelegramBot:
                 await TelegramBot.send_message_to_admin("Notifier already stopped.")
                 return
             TelegramBot.notifier_is_running = False
+            TelegramBot.update_timer["remaining"] = 0
             await TelegramBot.send_message_to_admin("Notifications stopped.")
 
         elif context.args[0] == "update":
@@ -479,7 +480,7 @@ async def notify_users():
                 del scrapper
             await TelegramBot.countdown("Next check in ", " seconds")
         else:
-            await TelegramBot.countdown("Notifications stopped. Next check in ", " seconds")
+            await asyncio.sleep(30)
 
 def run():
     loop = asyncio.new_event_loop()
