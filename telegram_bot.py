@@ -132,6 +132,15 @@ class TelegramBot:
             res = res[0]
         return res
 
+async def countdown(count, tick_time=1, pretext="", posttext=""):
+    space_size = len(posttext) + len(str(count))
+    space = "".ljust(space_size, " ")
+    for i in range(count + 1):
+        print(f"{pretext}{count - i}{posttext}{space}", end='\r')
+        await asyncio.sleep(tick_time)
+    print("")
+    return None
+
 
 async def notify_users():
     while True:
@@ -145,6 +154,8 @@ async def notify_users():
                 await TelegramBot.send_message(user.get_chat_id(), "Login failed. Please check your credentials.")
                 continue
             except Exception as e:
+                print(e)
+                print(e.args)
                 await TelegramBot.send_message_to_admin(f"Error: {e}")
                 continue
             print(f"Found {len(changed_courses)} changed courses for {user.get_chat_id()}")
@@ -161,7 +172,7 @@ async def notify_users():
                             await TelegramBot.send_message_to_admin(f"FileNotFoundError: {e}")
 
             del scrapper
-        await asyncio.sleep(60*30)
+        await countdown(60 * 5, 1, "Next check in ", " seconds")
 
 def run():
     loop = asyncio.new_event_loop()
