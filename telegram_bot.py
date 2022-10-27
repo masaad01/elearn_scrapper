@@ -42,6 +42,7 @@ class TelegramBot:
         self.app.add_handler(CommandHandler(
             "toggle_notifications", self._toggle_active))
         self.app.add_handler(CommandHandler("next_update", self._remaining_time))
+        self.app.add_handler(CommandHandler("admin", self._admin))
 
     async def _start(self, update: Update, context: ContextTypes):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Welcome to Elearning Bot.\nThis bot will notify you when new content is available on elearning.\nType /help for a list of commands.")
@@ -114,7 +115,282 @@ class TelegramBot:
 
     async def _unknown(self, update: Update, context: ContextTypes):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
-      
+
+    ## Admin command
+
+    async def _admin(self, update: Update, context: ContextTypes):
+        if update.effective_chat.id != self.admin_chat_id:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
+            return
+        if len(context.args) == 0 or context.args[0] == "help":
+            await TelegramBot.send_message_to_admin("Admin commands:\n/admin help - Show this message.\n/admin start - Start the notifier.\n/admin stop - Stop the notifier.\n/admin update - Force an update.\n/admin change_interval [minutes] - change the update interval.\n/admin users - Show the list of users.\n/admin user [chat_id/email] [value] - show user info.\n/admin block [chat_id/email] [value] - block user.\n/admin unblock [chat_id/email] [value] - unblock user.\n/admin broadcast [message] - broadcast a message to all users.\n/admin send [chat_id/email] [value] [message] - send a message to a user.")
+        
+        elif context.args[0] == "start":
+            if TelegramBot.notifier_is_running:
+                await TelegramBot.send_message_to_admin("Notifier already running.")
+                return
+            TelegramBot.notifier_is_running = True
+            await TelegramBot.send_message_to_admin("Notifications started.")
+
+        elif context.args[0] == "stop":
+            if not TelegramBot.notifier_is_running:
+                await TelegramBot.send_message_to_admin("Notifier already stopped.")
+                return
+            TelegramBot.notifier_is_running = False
+            await TelegramBot.send_message_to_admin("Notifications stopped.")
+
+        elif context.args[0] == "update":
+            if not TelegramBot.notifier_is_running:
+                await TelegramBot.send_message_to_admin("Notifier is not running. Use /admin start to start the notifier.")
+                return
+            if TelegramBot.update_timer["remaining"] == 0:
+                await TelegramBot.send_message_to_admin("Currently updating.")
+                return
+            TelegramBot.update_timer["remaining"] = 0
+            await TelegramBot.send_message_to_admin("Updating now...")
+
+        elif context.args[0] == "change_interval":
+            if len(context.args) > 1:
+                try:
+                    if int(context.args[1]) < 5:
+                        raise ValueError
+                    self.update_timer["interval"] = int(context.args[1])
+                    if self.update_timer["remaining"] > self.update_timer["interval"]:
+                        self.update_timer["remaining"] = self.update_timer["interval"]
+                    await TelegramBot.send_message_to_admin(f"Update interval changed to {self.update_timer['interval']} minutes.")
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid interval.\nInterval must be an integer greater than 5 minutes.")
+            else:
+                await context.bot.send_message(chat_id=self.admin_chat_id, text="Please specify an interval. (in minutes) (e.g. /admin change_interval 10)")
+                        
+        elif context.args[0] == "users":
+            if len(context.args) == 1 or context.args[1] == "all":
+                users = User.get_all_users()
+                try:
+                    if len(context.args) > 3:
+                        end = min(int(context.args[3]), len(users))
+                        start = min(int(context.args[2]), end)
+                    elif len(context.args) > 2:
+                        start = 0
+                        end = min(int(context.args[2]), len(users)) - 1
+                    else:
+                        start = 0
+                        end = len(users)
+                    users = users[start:end]
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid index.")
+                    return
+                text = f"Users:\n"
+                total_users = len(users)
+                active_users = 0
+                blocked_users = 0
+                for user in users:
+                    if user.get_is_active():
+                        active_users += 1
+                    if user.get_is_blocked():
+                        blocked_users += 1
+                    if user.get_password() is not None:
+                        password = "Set"
+                    else:
+                        password = "Not set"
+                    text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                
+                text += f"Total users: {total_users}\nActive users: {active_users}\nBlocked users: {blocked_users}"
+                await TelegramBot.send_message_to_admin(text)
+            elif context.args[1] == "active":
+                users = User.get_users_by("active", True)
+                try:
+                    if len(context.args) > 3:
+                        end = min(int(context.args[3]), len(users))
+                        start = min(int(context.args[2]), end)
+                    elif len(context.args) > 2:
+                        start = 0
+                        end = min(int(context.args[2]), len(users)) - 1
+                    else:
+                        start = 0
+                        end = len(users)
+                    users = users[start:end]
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid index.")
+                    return
+                text = f"Active users:\n"
+                for user in users:
+                    text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                text += f"Total active users: {len(users)}"
+                await TelegramBot.send_message_to_admin(text)
+            elif context.args[1] == "inactive":
+                users = User.get_users_by("active", False)
+                try:
+                    if len(context.args) > 3:
+                        end = min(int(context.args[3]), len(users))
+                        start = min(int(context.args[2]), end)
+                    elif len(context.args) > 2:
+                        start = 0
+                        end = min(int(context.args[2]), len(users)) - 1
+                    else:
+                        start = 0
+                        end = len(users)
+                    users = users[start:end]
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid index.")
+                    return
+                text = f"Inactive users:\n"
+                for user in users:
+                    text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                text += f"Total inactive users: {len(users)}"
+                await TelegramBot.send_message_to_admin(text)
+            elif context.args[1] == "blocked":
+                users = User.get_users_by("blocked", True)
+                try:
+                    if len(context.args) > 3:
+                        end = min(int(context.args[3]), len(users))
+                        start = min(int(context.args[2]), end)
+                    elif len(context.args) > 2:
+                        start = 0
+                        end = min(int(context.args[2]), len(users)) - 1
+                    else:
+                        start = 0
+                        end = len(users)
+                    users = users[start:end]
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid index.")
+                    return
+                text = f"Blocked users:\n"
+                for user in users:
+                    text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                text += f"Total blocked users: {len(users)}"
+                await TelegramBot.send_message_to_admin(text)
+            elif context.args[1] == "unblocked":
+                users = User.get_users_by("blocked", False)
+                try:
+                    if len(context.args) > 3:
+                        end = min(int(context.args[3]), len(users))
+                        start = min(int(context.args[2]), end)
+                    elif len(context.args) > 2:
+                        start = 0
+                        end = min(int(context.args[2]), len(users)) - 1
+                    else:
+                        start = 0
+                        end = len(users)
+                    users = users[start:end]
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid index.")
+                    return
+                text = f"Unblocked users:\n"
+                for user in users:
+                    text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                text += f"Total unblocked users: {len(users)}"
+                await TelegramBot.send_message_to_admin(text)
+            else:
+                await TelegramBot.send_message_to_admin("Invalid argument. Use /admin users [all/active/inactive/blocked/unblocked] [start/length] [end]")
+        
+        elif context.args[0] == "user":
+            if len(context.args) < 3:
+                await TelegramBot.send_message_to_admin("Invalid argument. Use /admin user [chat_id/email] [value]")
+            else:
+                key = context.args[1]
+                value = context.args[2]
+                if key == "chat_id":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                        return
+                res = User.get_user_by(key, value)
+                if res is None or len(res) == 0:
+                    await TelegramBot.send_message_to_admin("User not found.")
+                    return
+                user = res[0]
+                if user.get_password() is None:
+                    password = "Not set"
+                else:
+                    password = "Set"
+                text = f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
+                await TelegramBot.send_message_to_admin(text)
+
+        elif context.args[0] == "block":
+            if len(context.args) > 2:
+                key = context.args[1]
+                value = context.args[2]
+                if key not in ["chat_id", "email"]:
+                    await TelegramBot.send_message_to_admin("Invalid key. Use /admin block [chat_id/email] [value]")
+                    return
+                if key == "chat_id":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                        return
+                try:
+                    res = User.get_users_by(key, value)
+                    if res is None or len(res) == 0:
+                        await TelegramBot.send_message_to_admin("User not found.")
+                        return
+                    user = res[0]
+                    if user.get_is_blocked():
+                        await TelegramBot.send_message_to_admin("User is already blocked.")
+                        return
+                    user.set_is_blocked(True)
+                    User.update_user(user)
+                    await TelegramBot.send_message_to_admin(f"User {value} blocked.")
+                except Exception as e:
+                    await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
+            else:
+                await TelegramBot.send_message_to_admin("Please specify a user ID. Use /admin block [chat_id/email] [value]")
+        
+        elif context.args[0] == "unblock":
+            if len(context.args) > 2:
+                key = context.args[1]
+                value = context.args[2]
+                if key not in ["chat_id", "email"]:
+                    await TelegramBot.send_message_to_admin("Invalid key. Use /admin unblock [chat_id/email] [value]")
+                    return
+                if key == "chat_id":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                        return
+                try:
+                    res = User.get_users_by(key, value)
+                    if res is None or len(res) == 0:
+                        await TelegramBot.send_message_to_admin("User not found.")
+                        return
+                    user = res[0]
+                    if not user.get_is_blocked():
+                        await TelegramBot.send_message_to_admin("User is already unblocked.")
+                        return
+                    user.set_is_blocked(False)
+                    User.update_user(user)
+                    await TelegramBot.send_message_to_admin(f"User {value} unblocked.")
+                except Exception as e:
+                    await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
+            else:
+                await TelegramBot.send_message_to_admin("Please specify a user ID. Use /admin unblock [chat_id/email] [value]")
+        
+        elif context.args[0] == "broadcast":
+            if len(context.args) > 1:
+                text = " ".join(context.args[1:])
+                TelegramBot.broadcast(text)
+                TelegramBot.send_message_to_admin("Broadcast sent.")
+            else:
+                await TelegramBot.send_message_to_admin("Please specify a message. Use /admin broadcast [message]")
+                
+        
+        elif context.args[0] == "send":
+            if len(context.args) > 2:
+                try:
+                    chat_id = int(context.args[1])
+                except ValueError:
+                    await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                    return
+                text = " ".join(context.args[2:])
+                await TelegramBot.send_message(chat_id, text)
+                await TelegramBot.send_message_to_admin(f"Message sent to user {chat_id}.")
+        
+        else:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
+       
     def run(self):
         self.app.run_polling()
 
