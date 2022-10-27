@@ -43,6 +43,7 @@ class User:
         self.set_password(kwargs.get("password", None))
         self.set_is_active(kwargs.get("active", False))
         self.set_chat_id(kwargs.get("chat_id", None))
+        self.set_is_blocked(kwargs.get("blocked", False))
 
     def __repr__(self):
         return f"User({self._user_id}, {self._email}, {self._is_active}, {self._chat_id})"
@@ -143,6 +144,16 @@ class User:
     def get_chat_id(self):
         return self._chat_id
 
+    def set_is_blocked(self, is_blocked):
+        if is_blocked in [0, 1]:
+            is_blocked = bool(is_blocked)
+        elif type(is_blocked) is not bool:
+            raise TypeError("Is Blocked must be a boolean.")
+        self._is_blocked = is_blocked
+
+    def get_is_blocked(self):
+        return self._is_blocked
+
     @staticmethod
     def get_all_users():
         with DatabaseConnection() as connection:
@@ -198,7 +209,7 @@ class User:
         with DatabaseConnection() as connection:
             users = connection.get_table("user")
             query = db.insert(users).values(
-                user_id=user._user_id, email=user._email, password=user._password, active=user._is_active, chat_id=user._chat_id)
+                user_id=user._user_id, email=user._email, password=user._password, active=user._is_active, chat_id=user._chat_id, blocked=user._is_blocked)
             result = connection.execute(query)
 
         if result is None:
@@ -210,7 +221,7 @@ class User:
         with DatabaseConnection() as connection:
             users = connection.get_table("user")
             query = db.update(users).where(users.columns.user_id == user._user_id).values(
-                email=user._email, password=user._password, active=user._is_active, chat_id=user._chat_id)
+                email=user._email, password=user._password, active=user._is_active, chat_id=user._chat_id, blocked=user._is_blocked)
             result = connection.execute(query)
 
         if result is None:

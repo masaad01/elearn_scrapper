@@ -35,6 +35,7 @@ def myhash(text):
 
 class LoginError(Exception):
     def __init__(self, *args, **kwargs):
+        self.message = args[0] if args else None
         Exception.__init__(self, *args, **kwargs)
 
 
@@ -100,7 +101,12 @@ class ElearnScrapper:
             print(e)
             self._close_browser()
             self.is_logged_in = False
-            raise LoginError("Login failed")
+            if self.browser.find_elements(By.XPATH, r"//input[@value='Sign in']"):
+                raise LoginError("Invalid credentials")
+            elif self.browser.find_elements(By.XPATH, r"//input[@value='Next']"):
+                raise LoginError("Your organization needs more info to sign you in")
+            else:
+                raise LoginError("Unknown error")
         else:
             self.is_logged_in = True
 
