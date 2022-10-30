@@ -380,14 +380,29 @@ class TelegramBot:
         
         elif context.args[0] == "send":
             if len(context.args) > 2:
-                try:
-                    chat_id = int(context.args[1])
-                except ValueError:
-                    await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                key = context.args[1]
+                value = context.args[2]
+                if key not in ["chat_id", "email"]:
+                    await TelegramBot.send_message_to_admin("Invalid key. Use /admin unblock [chat_id/email] [value]")
                     return
-                text = " ".join(context.args[2:])
-                await TelegramBot.send_message(chat_id, text)
-                await TelegramBot.send_message_to_admin(f"Message sent to user {chat_id}.")
+                if key == "chat_id":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        await TelegramBot.send_message_to_admin("Invalid chat_id.")
+                        return
+                try:
+                    res = User.get_users_by(key, value)
+                    if res is None or len(res) == 0:
+                        await TelegramBot.send_message_to_admin("User not found.")
+                        return
+                    user = res[0]
+                    
+                    text = " ".join(context.args[2:])
+                    await TelegramBot.send_message(user.get_chat_id(), text)
+                    await TelegramBot.send_message_to_admin(f"Message sent to user {user.get_chat_id()}.")
+                except Exception as e:
+                    await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
         
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
