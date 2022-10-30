@@ -457,12 +457,12 @@ async def notify_users():
                 except LoginError as e:
                     print(e)
                     await TelegramBot.send_message_to_admin(f"Login error for user {user.get_chat_id()}\n{e}")
-                    await TelegramBot.send_message(user.get_chat_id(), "Login failed. {e}.")
+                    await TelegramBot.send_message(user.get_chat_id(), f"Login failed. {e}.")
                     continue
                 except Exception as e:
                     print(e)
                     print(e.args)
-                    await TelegramBot.send_message_to_admin(f"Error: {e}")
+                    await TelegramBot.send_message_to_admin(f"Scrapper Error: {e}")
                     continue
                 print(f"Found {len(changed_courses)} changed courses for {user.get_chat_id()}")
                 for course in changed_courses:
@@ -496,6 +496,6 @@ if __name__ == "__main__":
         bot.run()
     except Exception as e:
         print(e)
-        TelegramBot.send_message_to_admin(f"Error: {e}")
+        TelegramBot.send_message_to_admin(f"Uncaught Error: {e}\nBot stopped.")
         bot.stop()
         exit(1)

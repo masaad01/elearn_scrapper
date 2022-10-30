@@ -89,23 +89,37 @@ class ElearnScrapper:
             self.browser.find_element(
                 By.XPATH, r"//input[@value='Next']").click()
             sleep(1)
+        except Exception as e:
+            print(e)
+            self._close_browser()
+            raise Exception("elearn site is not responding")
+        
+        try:
             self.browser.find_element(
                 By.XPATH, r"//input[contains(@placeholder,'Password')]").send_keys(self._user.get_password())
             self.browser.find_element(
                 By.XPATH, r"//input[@value='Sign in']").click()
             sleep(1)
+        except Exception as e:
+            print(e)
+            self._close_browser()
+            raise LoginError("Invalid email")
+        
+        try:
             self.browser.find_element(
                 By.XPATH, r"//input[@value='No']").click()
             sleep(3)
         except Exception as e:
             print(e)
-            self._close_browser()
             self.is_logged_in = False
             if self.browser.find_elements(By.XPATH, r"//input[@value='Sign in']"):
+                self._close_browser()
                 raise LoginError("Invalid credentials")
             elif self.browser.find_elements(By.XPATH, r"//input[@value='Next']"):
+                self._close_browser()
                 raise LoginError("Your organization needs more info to sign you in")
             else:
+                self._close_browser()
                 raise LoginError("Unknown error")
         else:
             self.is_logged_in = True
