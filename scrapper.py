@@ -14,7 +14,7 @@ from users import User
 import hashlib
 
 
-_elearn_URL = r"https://learn.ejust.org/first23/my/"
+_elearn_URL = r"https://learn.ejust.org/first23/my/courses.php"
 
 
 def geckodriver_path():
@@ -210,8 +210,11 @@ class ElearnScrapper:
                 elem.screenshot(activity_data['screen_shot_path'])
                 section_data["activities"].append(activity_data)
 
+            
             course_data["course_sections"].append(section_data)
 
+        if len(course_data["course_sections"]) == 0:
+            return None
         return course_data
 
     def get_all_courses_data(self):
@@ -284,7 +287,7 @@ class ElearnScrapper:
 
 
 if __name__ == "__main__":
-    user = User.get_all_users()[0]
+    user = User.get_users_by(key="email", value="masaad19@cit.just.edu.jo")[0]
     scrapper = ElearnScrapper(user)
     courses_data = scrapper.get_all_courses_data()
     print(courses_data)

@@ -102,7 +102,7 @@ class TelegramBot:
     ## General commands
 
     async def _help(self, update: Update, context: ContextTypes):
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Commands:\n/start - Start the bot.\n/email - Get or Set your email address.\n/password - Get or Set your password.\n/toggle_notifications - Toggle notifications on or off.\n/help - Show help message.\n/next_update - Show the time remaining until the next update.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Commands:\n/start - Start the bot.\n/email - Get or Set your email address.\n   example: /email myemail@just.edu.jo\n/password - Get or Set your password.\n   example: /password mypassword\n/toggle_notifications - Toggle notifications on or off.\n/next_update - Get the time remaining until the next update.")
 
     async def _remaining_time(self, update: Update, context: ContextTypes):
         if not self.notifier_is_running:
@@ -123,7 +123,7 @@ class TelegramBot:
             await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
             return
         if len(context.args) == 0 or context.args[0] == "help":
-            await TelegramBot.send_message_to_admin("Admin commands:\n/admin help - Show this message.\n/admin start - Start the notifier.\n/admin stop - Stop the notifier.\n/admin update - Force an update.\n/admin change_interval [minutes] - change the update interval.\n/admin users - Show the list of users.\n/admin user [chat_id/email] [value] - show user info.\n/admin block [chat_id/email] [value] - block user.\n/admin unblock [chat_id/email] [value] - unblock user.\n/admin broadcast [message] - broadcast a message to all users.\n/admin send [chat_id/email] [value] [message] - send a message to a user.")
+            await TelegramBot.send_message_to_admin("Admin commands:\n/admin help - Show help message.\n/admin start - Start the notifier.\n/admin stop - Stop the notifier.\n/admin update - Force an update.\n/admin current_interval - show the current update interval.\n/admin change_interval [minutes] - change the update interval.\n/admin users - Show the list of users.\n/admin user [chat_id/email] [value] - show user info.\n/admin block [chat_id/email] [value] - block user.\n/admin unblock [chat_id/email] [value] - unblock user.\n/admin broadcast [message] - broadcast a message to all users.\n/admin send [chat_id/email] [value] [message] - send a message to a user.")
         
         elif context.args[0] == "start":
             if TelegramBot.notifier_is_running:
@@ -150,6 +150,9 @@ class TelegramBot:
             TelegramBot.update_timer["remaining"] = 0
             await TelegramBot.send_message_to_admin("Updating now...")
 
+        elif context.args[0] == "current_interval":
+            await TelegramBot.send_message_to_admin(f"Current interval: {TelegramBot.update_timer['interval']} minutes.")
+            
         elif context.args[0] == "change_interval":
             if len(context.args) > 1:
                 try:
