@@ -102,7 +102,7 @@ class TelegramBot:
     ## General commands
 
     async def _help(self, update: Update, context: ContextTypes):
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Commands:\n/start - Start the bot.\n/email - Get or Set your email address.\n   example: /email myemail@just.edu.jo\n/password - Get or Set your password.\n   example: /password mypassword\n/toggle_notifications - Toggle notifications on or off.\n/next_update - Get the time remaining until the next update.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Commands:\n/start - Start the bot.\n/email - Get or Set your email address.\n   example: /email myemail@just.edu.jo\n/password - Get or Set your password.\n   example: /password mypassword\n/toggle_notifications - Toggle notifications on or off.\n/next_update - Get the time remaining until the next update.\n/help - Get a list of commands.")
 
     async def _remaining_time(self, update: Update, context: ContextTypes):
         if not self.notifier_is_running:
