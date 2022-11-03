@@ -468,6 +468,8 @@ async def notify_users():
         if TelegramBot.notifier_is_running:
             active_users = User.get_users_by("active", True)
             for user in active_users:
+                if user.get_is_blocked():
+                    continue
                 scrapper = ElearnScrapper(user)
                 try:
                     print(f"Checking for new content for {user.get_chat_id()}")
