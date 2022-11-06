@@ -210,7 +210,7 @@ class ElearnScrapper:
                 elem.screenshot(activity_data['screen_shot_path'])
                 section_data["activities"].append(activity_data)
 
-            if len(activity_data["activities"]) != 0:
+            if len(section_data["activities"]) != 0:
                 course_data["course_sections"].append(section_data)
 
         if len(course_data["course_sections"]) == 0:
