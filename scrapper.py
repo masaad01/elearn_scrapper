@@ -191,7 +191,7 @@ class ElearnScrapper:
             for elem in activities_elements:
                 try:
                     elem.find_element(By.XPATH, r".//button[contains(@title,'is marked as done')]")
-                except Exception as e:
+                except:
                     pass
                 else:
                     continue
@@ -210,8 +210,8 @@ class ElearnScrapper:
                 elem.screenshot(activity_data['screen_shot_path'])
                 section_data["activities"].append(activity_data)
 
-            
-            course_data["course_sections"].append(section_data)
+            if len(activity_data["activities"]) != 0:
+                course_data["course_sections"].append(section_data)
 
         if len(course_data["course_sections"]) == 0:
             return None
