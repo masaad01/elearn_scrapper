@@ -12,8 +12,8 @@ from scrapper import ElearnScrapper, LoginError
 
 
 if __name__ == "__main__":
-    logging.basicConfig(encoding="utf-8", filename="telegram_bot.log",
-                        format=f"%(levelname)s   %(asctime)s  \n%(message)s \n{'='*100}\n", filemode="w")
+    logging.basicConfig(level=logging.INFO ,encoding="utf-8", filename="telegram_bot.log",
+                        format=f"%(levelname)s   %(asctime)s  \n%(message)s")
 
 
 class TelegramBot:
@@ -463,6 +463,7 @@ class TelegramBot:
                 break
         TelegramBot.update_timer["remaining"] = 0
         print("")
+        logging.info("Updating...")
         return None
 
 
@@ -476,6 +477,7 @@ async def notify_users():
                 scrapper = ElearnScrapper(user)
                 try:
                     print(f"Checking for new content for {user.get_chat_id()}")
+                    logging.info(f"Checking for new content for {user.get_chat_id()}")
                     changed_courses = scrapper.get_all_courses_data()
                 except LoginError as e:
                     print(e)
@@ -517,6 +519,7 @@ def run():
 
 
 if __name__ == "__main__":
+    logging.info("Starting...")
     try:
         mythread = threading.Thread(target=run, daemon=True)
         mythread.start()
