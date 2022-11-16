@@ -2,6 +2,7 @@ import os
 import platform
 import shutil
 from time import sleep
+import logging
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -22,6 +23,7 @@ def geckodriver_path():
     if os_m.find("Linux") != -1:
         if shutil.which("geckodriver") is None:
             print("geckodriver not found. Installing...")
+            logging.info("geckodriver not found. Installing...")
             os.system("sudo add-apt-repository ppa:ubuntu-mozilla-security/ppa ")
             os.system("sudo apt install firefox-geckodriver")
         return "geckodriver"
@@ -91,6 +93,7 @@ class ElearnScrapper:
             sleep(1)
         except Exception as e:
             print(e)
+            logging.error(e)
             self._close_browser()
             raise Exception("elearn site is not responding")
         
@@ -102,6 +105,7 @@ class ElearnScrapper:
             sleep(1)
         except Exception as e:
             print(e)
+            logging.error(e)
             self._close_browser()
             raise LoginError("Invalid email")
         
@@ -111,6 +115,7 @@ class ElearnScrapper:
             sleep(3)
         except Exception as e:
             print(e)
+            logging.error(e)
             self.is_logged_in = False
             if self.browser.find_elements(By.XPATH, r"//input[@value='Sign in']"):
                 self._close_browser()
@@ -156,6 +161,7 @@ class ElearnScrapper:
             self.browser.get(course_url)
         except Exception as e:
             print(e)
+            logging.error(e)
             return None
         sleep(1)
         content = self.browser.find_element(
@@ -226,6 +232,7 @@ class ElearnScrapper:
             if course_data is not None:
                 courses_data.append(course_data)
             print(f"Course {i+1}/{number_of_courses} done.")
+            logging.info(f"Course {i+1}/{number_of_courses} done.")
         self._close_browser()
         return courses_data
 
@@ -254,7 +261,7 @@ class ElearnScrapper:
         with DatabaseConnection() as connection:
 
             table = connection.get_table("last_updated")
-            query = db.select([table]).where(
+            query = db.select([table.c.hash]).where(
                 table.columns.id == item_id, table.columns.user_id == self._user.get_user_id())
             result_proxy = connection.execute(query)
             if result_proxy is None:
@@ -287,6 +294,7 @@ class ElearnScrapper:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(filename='scrapper.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
     user = User.get_users_by(key="email", value="masaad19@cit.just.edu.jo")[0]
     scrapper = ElearnScrapper(user)
     courses_data = scrapper.get_all_courses_data()

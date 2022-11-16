@@ -12,8 +12,8 @@ from scrapper import ElearnScrapper, LoginError
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR, encoding="utf-8",
-                        filename="./logs/bot.log", format=f"%(levelname)s   %(asctime)s  \n%(message)s \n{'='*100}\n", filemode="w")
+    logging.basicConfig(encoding="utf-8", filename="telegram_bot.log",
+                        format=f"%(levelname)s   %(asctime)s  \n%(message)s \n{'='*100}\n", filemode="w")
 
 
 class TelegramBot:
@@ -23,7 +23,7 @@ class TelegramBot:
         admin_chat_id = int(admin_chat_id["id"])
         del config
     botapi = BotAPI(token=token)
-    update_timer = {"remaining": 0, "interval": 15} #in minutes
+    update_timer = {"remaining": 0, "interval": 15}  # in minutes
 
     notifier_is_running = True
 
@@ -41,7 +41,8 @@ class TelegramBot:
         self.app.add_handler(CommandHandler("help", self._help))
         self.app.add_handler(CommandHandler(
             "toggle_notifications", self._toggle_active))
-        self.app.add_handler(CommandHandler("next_update", self._remaining_time))
+        self.app.add_handler(CommandHandler(
+            "next_update", self._remaining_time))
         self.app.add_handler(CommandHandler("admin", self._admin))
 
     async def _start(self, update: Update, context: ContextTypes):
@@ -52,7 +53,7 @@ class TelegramBot:
         if user.get_password() is None:
             await context.bot.send_message(chat_id=user.get_chat_id(), text="Please set your password using the /password command.")
 
-    ## User related commands
+    # User related commands
 
     async def _email(self, update: Update, context: ContextTypes):
         user = TelegramBot.get_user(update.effective_chat.id)
@@ -99,7 +100,7 @@ class TelegramBot:
             text = "You are now inactive. You will not receive notifications from the bot."
         await context.bot.send_message(chat_id=user.get_chat_id(), text=text)
 
-    ## General commands
+    # General commands
 
     async def _help(self, update: Update, context: ContextTypes):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Commands:\n/start - Start the bot.\n/email - Get or Set your email address.\n   example: /email myemail@just.edu.jo\n/password - Get or Set your password.\n   example: /password mypassword\n/toggle_notifications - Toggle notifications on or off.\n/next_update - Get the time remaining until the next update.\n/help - Get a list of commands.")
@@ -116,7 +117,7 @@ class TelegramBot:
     async def _unknown(self, update: Update, context: ContextTypes):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
 
-    ## Admin command
+    # Admin command
 
     async def _admin(self, update: Update, context: ContextTypes):
         if update.effective_chat.id != self.admin_chat_id:
@@ -124,7 +125,7 @@ class TelegramBot:
             return
         if len(context.args) == 0 or context.args[0] == "help":
             await TelegramBot.send_message_to_admin("Admin commands:\n/admin help - Show help message.\n/admin start - Start the notifier.\n/admin stop - Stop the notifier.\n/admin update - Force an update.\n/admin current_interval - show the current update interval.\n/admin change_interval [minutes] - change the update interval.\n/admin users - Show the list of users.\n/admin user [chat_id/email] [value] - show user info.\n/admin block [chat_id/email] [value] - block user.\n/admin unblock [chat_id/email] [value] - unblock user.\n/admin broadcast [message] - broadcast a message to all users.\n/admin send [chat_id/email] [value] [message] - send a message to a user.")
-        
+
         elif context.args[0] == "start":
             if TelegramBot.notifier_is_running:
                 await TelegramBot.send_message_to_admin("Notifier already running.")
@@ -152,7 +153,7 @@ class TelegramBot:
 
         elif context.args[0] == "current_interval":
             await TelegramBot.send_message_to_admin(f"Current interval: {TelegramBot.update_timer['interval']} minutes.")
-            
+
         elif context.args[0] == "change_interval":
             if len(context.args) > 1:
                 try:
@@ -166,7 +167,7 @@ class TelegramBot:
                     await TelegramBot.send_message_to_admin("Invalid interval.\nInterval must be an integer greater than 5 minutes.")
             else:
                 await context.bot.send_message(chat_id=self.admin_chat_id, text="Please specify an interval. (in minutes) (e.g. /admin change_interval 10)")
-                        
+
         elif context.args[0] == "users":
             if len(context.args) == 1 or context.args[1] == "all":
                 users = User.get_all_users()
@@ -198,7 +199,7 @@ class TelegramBot:
                     else:
                         password = "Not set"
                     text += f"ID: {user.get_chat_id()}\nEmail: {user.get_email()}\nPassword: {password}\nActive: {user.get_is_active()}\nBlocked: {user.get_is_blocked()}\n{'='*20}\n"
-                
+
                 text += f"Total users: {total_users}\nActive users: {active_users}\nBlocked users: {blocked_users}"
                 await TelegramBot.send_message_to_admin(text)
             elif context.args[1] == "active":
@@ -287,7 +288,7 @@ class TelegramBot:
                 await TelegramBot.send_message_to_admin(text)
             else:
                 await TelegramBot.send_message_to_admin("Invalid argument. Use /admin users [all/active/inactive/blocked/unblocked] [start/length] [end]")
-        
+
         elif context.args[0] == "user":
             if len(context.args) < 3:
                 await TelegramBot.send_message_to_admin("Invalid argument. Use /admin user [chat_id/email] [value]")
@@ -341,7 +342,7 @@ class TelegramBot:
                     await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
             else:
                 await TelegramBot.send_message_to_admin("Please specify a user ID. Use /admin block [chat_id/email] [value]")
-        
+
         elif context.args[0] == "unblock":
             if len(context.args) > 2:
                 key = context.args[1]
@@ -371,7 +372,7 @@ class TelegramBot:
                     await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
             else:
                 await TelegramBot.send_message_to_admin("Please specify a user ID. Use /admin unblock [chat_id/email] [value]")
-        
+
         elif context.args[0] == "broadcast":
             if len(context.args) > 1:
                 text = " ".join(context.args[1:])
@@ -379,8 +380,7 @@ class TelegramBot:
                 TelegramBot.send_message_to_admin("Broadcast sent.")
             else:
                 await TelegramBot.send_message_to_admin("Please specify a message. Use /admin broadcast [message]")
-                
-        
+
         elif context.args[0] == "send":
             if len(context.args) > 2:
                 key = context.args[1]
@@ -400,16 +400,16 @@ class TelegramBot:
                         await TelegramBot.send_message_to_admin("User not found.")
                         return
                     user = res[0]
-                    
+
                     text = " ".join(context.args[2:])
                     await TelegramBot.send_message(user.get_chat_id(), text)
                     await TelegramBot.send_message_to_admin(f"Message sent to user {user.get_chat_id()}.")
                 except Exception as e:
                     await TelegramBot.send_message_to_admin(f"Invalid user ID.\n{e}")
-        
+
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command.")
-       
+
     def run(self):
         self.app.run_polling()
 
@@ -432,7 +432,7 @@ class TelegramBot:
         with open(photo_path, "rb") as f:
             async with TelegramBot.botapi:
                 await TelegramBot.botapi.send_photo(chat_id=chat_id, photo=f)
-            
+
     @staticmethod
     async def send_message_to_admin(text):
         await TelegramBot.send_message(TelegramBot.admin_chat_id, text)
@@ -450,6 +450,9 @@ class TelegramBot:
     @staticmethod
     async def countdown(pretext="", posttext=""):
         count = TelegramBot.update_timer["interval"] * 60
+
+        logging.info(f"Updating in {count} seconds.")
+
         space_size = len(posttext) + len(str(count))
         space = "".ljust(space_size, " ")
         for i in range(count + 1):
@@ -476,15 +479,19 @@ async def notify_users():
                     changed_courses = scrapper.get_all_courses_data()
                 except LoginError as e:
                     print(e)
+                    logging.error(e)
+                    logging.error(f"Login error for user {user.get_chat_id()}")
                     await TelegramBot.send_message_to_admin(f"Login error for user {user.get_chat_id()}\n{e}")
                     await TelegramBot.send_message(user.get_chat_id(), f"Login failed. {e}.")
                     continue
                 except Exception as e:
                     print(e)
                     print(e.args)
+                    logging.error(e)
                     await TelegramBot.send_message_to_admin(f"Scrapper Error: {e}")
                     continue
                 print(f"Found {len(changed_courses)} changed courses for {user.get_chat_id()}")
+                logging.info(f"Found {len(changed_courses)} changed courses for {user.get_chat_id()}")
                 for course in changed_courses:
                     if len(course["course_sections"]) == 0:
                         continue
@@ -502,10 +509,12 @@ async def notify_users():
         else:
             await asyncio.sleep(30)
 
+
 def run():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     asyncio.run(notify_users())
+
 
 if __name__ == "__main__":
     try:
@@ -516,6 +525,7 @@ if __name__ == "__main__":
         bot.run()
     except Exception as e:
         print(e)
+        logging.error(e)
         TelegramBot.send_message_to_admin(f"Uncaught Error: {e}\nBot stopped.")
         bot.stop()
         exit(1)
