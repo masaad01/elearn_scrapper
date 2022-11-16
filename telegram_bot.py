@@ -13,7 +13,7 @@ from scrapper import ElearnScrapper, LoginError
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO ,encoding="utf-8", filename="telegram_bot.log",
-                        format=f"%(levelname)s   %(asctime)s  \n%(message)s")
+                        format=f"%(levelname)s   %(asctime)s  %(message)s")
 
 
 class TelegramBot:
