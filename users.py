@@ -1,8 +1,9 @@
-import json
+import os
 import logging
 import re
 from random import randrange
 from uuid import uuid4
+from dotenv import load_dotenv
 
 import sqlalchemy as db
 from cryptography.fernet import Fernet
@@ -10,29 +11,26 @@ from cryptography.fernet import Fernet
 from database_connection import DatabaseConnection
 
 
+load_dotenv()
 def main():
     logging.basicConfig(level=logging.ERROR, encoding="utf-8",
                         filename="./logs/users.log", format=f"%(levelname)s   %(asctime)s  \n%(message)s \n{'='*100}\n", filemode="w")
 
 
 def encrypt_password(password: str) -> bytes:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-        key = config["encryption_key"].encode()
-        salt = str(randrange(0, int(1e10))).zfill(10)
-        encPassword = Fernet(key).encrypt(f"{password}{salt}".encode())
-        return encPassword
+    key = os.getenv("ENCRYPTION_KEY").encode()
+    salt = str(randrange(0, int(1e10))).zfill(10)
+    encPassword = Fernet(key).encrypt(f"{password}{salt}".encode())
+    return encPassword
 
 
 def dycrypt_password(encPassword: bytes) -> str:
     if type(encPassword) != bytes:
         return None
-    with open("config.json", "r") as f:
-        config = json.load(f)
-        key = config["encryption_key"].encode()
-        decPassword = Fernet(key).decrypt(encPassword).decode()
-        decPassword = decPassword[:-10]
-        return decPassword
+    key = os.getenv("ENCRYPTION_KEY").encode()
+    decPassword = Fernet(key).decrypt(encPassword).decode()
+    decPassword = decPassword[:-10]
+    return decPassword
 
 
 class User:

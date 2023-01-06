@@ -1,27 +1,25 @@
 import asyncio
-import json
+import os
 import logging
 import threading
 from telegram import Update
 from telegram import Bot as BotAPI
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
                           MessageHandler, filters)
-
+from dotenv import load_dotenv
 from users import User
 from scrapper import ElearnScrapper, LoginError
 
 
+load_dotenv()
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO ,encoding="utf-8", filename="telegram_bot.log",
                         format=f"%(levelname)s   %(asctime)s  %(message)s")
 
 
 class TelegramBot:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-        token, admin_chat_id = config["telegram_bot"].values()
-        admin_chat_id = int(admin_chat_id["id"])
-        del config
+    token = os.getenv("TELEGRAM_TOKEN")
+    admin_chat_id = int(os.getenv("TELEGRAM_ADMIN_ID"))
     botapi = BotAPI(token=token)
     update_timer = {"remaining": 0, "interval": 15}  # in minutes
 

@@ -1,10 +1,12 @@
-import json
+import os
 import logging
 from urllib.parse import quote_plus as qp
+from dotenv import load_dotenv
 
 import sqlalchemy as db
 from pymysql import err as sqlError
 
+load_dotenv()
 
 def main():
     logging.basicConfig(level=logging.ERROR, encoding="utf-8",
@@ -12,11 +14,13 @@ def main():
 
 
 class DatabaseConnection:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-        _db_login = {key: qp(value)
-                     for key, value in config["database_connection"].items()}
-        del config
+    _db_login = {
+        "host": os.getenv("DB_HOST"), 
+        "port": os.getenv("DB_PORT"), 
+        "user": os.getenv("DB_USER"), 
+        "password": os.getenv("DB_PASSWORD"), 
+        "database": os.getenv("DB_NAME")
+    }
     _engine = db.create_engine(
         f"mysql+pymysql://{_db_login['user']}:{_db_login['password']}@{_db_login['host']}:{_db_login['port']}/{_db_login['database']}")
     _metadata = db.MetaData()
