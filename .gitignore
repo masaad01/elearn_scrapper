@@ -1,5 +1,6 @@
 venv/
 tmp/
+logs/
 __pycache__/
 *.crt.pem
 *.log
